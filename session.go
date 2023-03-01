@@ -137,9 +137,10 @@ func (s *session) shouldSendReset() bool {
 	if s.sessionID.BeginString < BeginStringFIX41 {
 		return false
 	}
-
-	return (s.ResetOnLogon || s.ResetOnDisconnect || s.ResetOnLogout) &&
+	shouldSendReset := (s.ResetOnLogon || s.ResetOnDisconnect || s.ResetOnLogout) &&
 		s.store.NextTargetMsgSeqNum() == 1 && s.store.NextSenderMsgSeqNum() == 1
+	fmt.Println("shouldSendReset", s.ResetOnLogon, s.ResetOnDisconnect, s.ResetOnLogout, s.store.NextTargetMsgSeqNum(), s.store.NextSenderMsgSeqNum())
+	return shouldSendReset
 }
 
 func (s *session) sendLogon() error {
