@@ -167,6 +167,7 @@ func (s *session) sendLogonInReplyTo(setResetSeqNum bool, inReplyTo *Message) er
 	}
 
 	if err := s.dropAndSendInReplyTo(logon, inReplyTo); err != nil {
+		fmt.Println("testAAA6:", err)
 		return err
 	}
 
@@ -264,6 +265,7 @@ func (s *session) dropAndReset() error {
 
 // dropAndSend will validate and persist the message, then drops the send queue and sends the message.
 func (s *session) dropAndSend(msg *Message) error {
+	fmt.Println("testAAA5:")
 	return s.dropAndSendInReplyTo(msg, nil)
 }
 func (s *session) dropAndSendInReplyTo(msg *Message, inReplyTo *Message) error {

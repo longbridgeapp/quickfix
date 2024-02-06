@@ -2,6 +2,7 @@ package quickfix
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/quickfixgo/quickfix/internal"
 )
@@ -63,6 +64,7 @@ func shutdownWithReason(session *session, msg *Message, incrNextTargetMsgSeqNum 
 	logout := session.buildLogout(reason)
 
 	if err := session.dropAndSendInReplyTo(logout, msg); err != nil {
+		fmt.Println("testAAA4:", err)
 		session.logError(err)
 	}
 
