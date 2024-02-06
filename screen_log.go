@@ -2,6 +2,7 @@ package quickfix
 
 import (
 	"fmt"
+	"runtime/debug"
 	"time"
 )
 
@@ -21,7 +22,7 @@ func (l screenLog) OnOutgoing(s []byte) {
 
 func (l screenLog) OnEvent(s string) {
 	logTime := time.Now().UTC()
-	fmt.Printf("<%v, %s, event>\n  (%s)\n", logTime, l.prefix, s)
+	fmt.Printf("<%v, %s, event>\n  (%s)\n %s\n", logTime, l.prefix, s, debug.Stack())
 }
 
 func (l screenLog) OnEventf(format string, a ...interface{}) {
@@ -40,7 +41,7 @@ func (screenLogFactory) CreateSessionLog(sessionID SessionID) (Log, error) {
 	return log, nil
 }
 
-//NewScreenLogFactory creates an instance of LogFactory that writes messages and events to stdout.
+// NewScreenLogFactory creates an instance of LogFactory that writes messages and events to stdout.
 func NewScreenLogFactory() LogFactory {
 	return screenLogFactory{}
 }
