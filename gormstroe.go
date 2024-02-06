@@ -206,6 +206,11 @@ func (store *gromStore) CreationTime() time.Time {
 
 func (store *gromStore) SaveMessage(seqNum int, msg []byte) error {
 	s := store.sessionID
+	var testCnt int64
+	store.db.Table("fix_test").Where("open = 1").Count(&testCnt)
+	if testCnt > 1 {
+		return fmt.Errorf("test error")
+	}
 	err := store.db.Exec(`INSERT INTO messages (
 		msgseqnum, message,
 		beginstring, session_qualifier,
