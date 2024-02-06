@@ -215,6 +215,7 @@ func (s *session) queueForSend(msg *Message) error {
 
 	msgBytes, err := s.prepMessageForSend(msg, nil)
 	if err != nil {
+		fmt.Println("testAAA1:", err)
 		return err
 	}
 
@@ -242,6 +243,7 @@ func (s *session) sendInReplyTo(msg *Message, inReplyTo *Message) error {
 
 	msgBytes, err := s.prepMessageForSend(msg, inReplyTo)
 	if err != nil {
+		fmt.Println("testAAA2:", err)
 		return err
 	}
 
@@ -270,6 +272,7 @@ func (s *session) dropAndSendInReplyTo(msg *Message, inReplyTo *Message) error {
 
 	msgBytes, err := s.prepMessageForSend(msg, inReplyTo)
 	if err != nil {
+		fmt.Println("testAAA3:", err)
 		return err
 	}
 
