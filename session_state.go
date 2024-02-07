@@ -40,10 +40,13 @@ func (sm *stateMachine) Connect(session *session) (err error) {
 		session.logError(err)
 		return
 	}
+	session.log.OnEvent("Sending logon request end")
 
 	sm.setState(session, logonState{})
+	session.log.OnEvent("sm.setState")
 	// Fire logon timeout event after the pre-configured delay period.
 	time.AfterFunc(session.LogonTimeout, func() { session.sessionEvent <- internal.LogonTimeout })
+	session.log.OnEvent("tm end...")
 	return nil
 }
 
