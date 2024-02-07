@@ -141,7 +141,7 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 			session.log.OnEvent("not waitForInSessionTime")
 			return
 		}
-
+		session.log.OnEventf("new one...")
 		var disconnected chan interface{}
 		var msgIn chan fixIn
 		var msgOut chan []byte
@@ -180,9 +180,10 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 			session.log.OnEventf("Failed to initiate: %v", err)
 			goto reconnect
 		}
-
+		session.log.OnEventf("readLoop.....")
 		go readLoop(newParser(bufio.NewReader(netConn)), msgIn)
 		disconnected = make(chan interface{})
+		session.log.OnEventf("writeLoop.....")
 		go func() {
 			writeLoop(netConn, msgOut, session.log)
 			if err := netConn.Close(); err != nil {
@@ -194,6 +195,7 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 
 		select {
 		case <-disconnected:
+			session.log.OnEventf("disconnected.....")
 		case <-i.stopChan:
 			return
 		}
