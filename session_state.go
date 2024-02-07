@@ -21,7 +21,7 @@ func (sm *stateMachine) Start(s *session) {
 	sm.CheckSessionTime(s, time.Now())
 }
 
-func (sm *stateMachine) Connect(session *session) {
+func (sm *stateMachine) Connect(session *session) (err error) {
 	// No special logon logic needed for FIX Acceptors.
 	if !session.InitiateLogon {
 		sm.setState(session, logonState{})
@@ -29,13 +29,13 @@ func (sm *stateMachine) Connect(session *session) {
 	}
 
 	if session.RefreshOnLogon {
-		if err := session.store.Refresh(); err != nil {
+		if err = session.store.Refresh(); err != nil {
 			session.logError(err)
 			return
 		}
 	}
 	session.log.OnEvent("Sending logon request")
-	if err := session.sendLogon(); err != nil {
+	if err = session.sendLogon(); err != nil {
 		fmt.Println("send Logon err", err)
 		session.logError(err)
 		return

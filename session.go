@@ -730,15 +730,18 @@ func (s *session) onAdmin(msg interface{}) {
 			return
 		}
 
-		if msg.err != nil {
-			close(msg.err)
-		}
-
 		s.messageIn = msg.messageIn
 		s.messageOut = msg.messageOut
 		s.sentReset = false
 
-		s.Connect(s)
+		err := s.Connect(s)
+		if err != nil {
+			msg.err <- err
+		}
+
+		if msg.err != nil {
+			close(msg.err)
+		}
 
 	case stopReq:
 		s.Stop(s)
