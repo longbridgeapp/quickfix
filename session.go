@@ -736,6 +736,7 @@ func (s *session) onAdmin(msg interface{}) {
 
 		err := s.Connect(s)
 		if err != nil {
+			s.log.OnEventf("Connect test err:%+v", err)
 			msg.err <- err
 		}
 
