@@ -44,6 +44,7 @@ func (sm *stateMachine) Connect(session *session) (err error) {
 	sm.setState(session, logonState{})
 	// Fire logon timeout event after the pre-configured delay period.
 	time.AfterFunc(session.LogonTimeout, func() { session.sessionEvent <- internal.LogonTimeout })
+	return nil
 }
 
 func (sm *stateMachine) Stop(session *session) {
