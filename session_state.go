@@ -36,6 +36,7 @@ func (sm *stateMachine) Connect(session *session) {
 	}
 	session.log.OnEvent("Sending logon request")
 	if err := session.sendLogon(); err != nil {
+		fmt.Println("send Logon err", err)
 		session.logError(err)
 		return
 	}
@@ -193,8 +194,8 @@ func handleStateError(s *session, err error) sessionState {
 	return latentState{}
 }
 
-//sessionState is the current state of the session state machine. The session state determines how the session responds to
-//incoming messages, timeouts, and requests to send application messages.
+// sessionState is the current state of the session state machine. The session state determines how the session responds to
+// incoming messages, timeouts, and requests to send application messages.
 type sessionState interface {
 	//FixMsgIn is called by the session on incoming messages from the counter party.  The return type is the next session state
 	//following message processing

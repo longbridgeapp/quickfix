@@ -22,7 +22,7 @@ func (l screenLog) OnOutgoing(s []byte) {
 
 func (l screenLog) OnEvent(s string) {
 	logTime := time.Now().UTC()
-	fmt.Printf("<%v, %s, event>\n  (%s)\n %s\n", logTime, l.prefix, s, debug.Stack())
+	fmt.Printf("<%v, %s, event>  (%s) %s", logTime, l.prefix, s, debug.Stack())
 }
 
 func (l screenLog) OnEventf(format string, a ...interface{}) {

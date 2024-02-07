@@ -138,6 +138,7 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 
 	for {
 		if !i.waitForInSessionTime(session) {
+			session.log.OnEvent("not waitForInSessionTime")
 			return
 		}
 
@@ -187,6 +188,7 @@ func (i *Initiator) handleConnection(session *session, tlsConfig *tls.Config, di
 			if err := netConn.Close(); err != nil {
 				session.log.OnEvent(err.Error())
 			}
+			session.log.OnEvent("writeLoop end")
 			close(disconnected)
 		}()
 
