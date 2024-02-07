@@ -22,13 +22,13 @@ func (sm *stateMachine) Start(s *session) {
 }
 
 func (sm *stateMachine) Connect(session *session) {
+	sm.setState(session, logonState{})
+
 	// No special logon logic needed for FIX Acceptors.
 	if !session.InitiateLogon {
-		sm.setState(session, logonState{})
 		return
 	}
 
-	sm.setState(session, logonState{})
 	// Fire logon timeout event after the pre-configured delay period.
 	time.AfterFunc(session.LogonTimeout, func() { session.sessionEvent <- internal.LogonTimeout })
 
