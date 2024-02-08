@@ -1,6 +1,7 @@
 package quickfix
 
 import (
+	"fmt"
 	"io"
 	"log"
 )
@@ -16,6 +17,7 @@ func writeLoop(connection io.Writer, messageOut chan []byte, log Log) {
 			log.OnEvent(err.Error())
 		}
 	}
+	fmt.Println("writeLoop...end...")
 }
 
 func readLoop(parser *parser, msgIn chan fixIn) {
@@ -29,4 +31,5 @@ func readLoop(parser *parser, msgIn chan fixIn) {
 		}
 		msgIn <- fixIn{msg, parser.lastRead}
 	}
+	fmt.Println("readLoop...end")
 }
