@@ -166,6 +166,7 @@ func (s *session) sendLogonInReplyTo(setResetSeqNum bool, inReplyTo *Message) er
 		logon.Body.SetField(tagDefaultApplVerID, FIXString(s.DefaultApplVerID))
 	}
 
+	fmt.Println("testAAA7")
 	if err := s.dropAndSendInReplyTo(logon, inReplyTo); err != nil {
 		fmt.Println("testAAA6:", err)
 		return err
@@ -269,9 +270,10 @@ func (s *session) dropAndSend(msg *Message) error {
 	return s.dropAndSendInReplyTo(msg, nil)
 }
 func (s *session) dropAndSendInReplyTo(msg *Message, inReplyTo *Message) error {
+	fmt.Println("testAAA9")
 	s.sendMutex.Lock()
 	defer s.sendMutex.Unlock()
-
+	fmt.Println("testAAA8")
 	msgBytes, err := s.prepMessageForSend(msg, inReplyTo)
 	if err != nil {
 		fmt.Println("testAAA3:", err)
