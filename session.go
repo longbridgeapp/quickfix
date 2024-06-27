@@ -250,7 +250,7 @@ func (s *session) sendInReplyTo(msg *Message, inReplyTo *Message) error {
 	tmNow := time.Now()
 	s.toSend = append(s.toSend, msgBytes)
 	s.sendQueued()
-	log.Infof("[session.prepMessageForSend] sendQueued time:%+v", time.Since(tmNow))
+	log.Infof("[timetest] sendQueued time:%+v", time.Since(tmNow))
 
 	return nil
 }
@@ -288,7 +288,7 @@ func (s *session) prepMessageForSend(msg *Message, inReplyTo *Message) (msgBytes
 	s.fillDefaultHeader(msg, inReplyTo)
 	tmNow := time.Now()
 	seqNum := s.store.NextSenderMsgSeqNum()
-	log.Infof("[session.prepMessageForSend] NextSenderMsgSeqNum time:%+v", time.Since(tmNow))
+	log.Infof("[timetest] NextSenderMsgSeqNum time:%+v", time.Since(tmNow))
 	msg.Header.SetField(tagMsgSeqNum, FIXInt(seqNum))
 
 	msgType, err := msg.Header.GetBytes(tagMsgType)
@@ -322,25 +322,30 @@ func (s *session) prepMessageForSend(msg *Message, inReplyTo *Message) (msgBytes
 		if err = s.application.ToApp(msg, s.sessionID); err != nil {
 			return
 		}
-		log.Infof("[session.prepMessageForSend] ToApp time:%+v", time.Since(tmNow))
+		log.Infof("[timetest] ToApp time:%+v", time.Since(tmNow))
 	}
 
 	tmNow = time.Now()
 	msgBytes = msg.build()
 	err = s.persist(seqNum, msgBytes)
-	log.Infof("[session.prepMessageForSend] ToApp time:%+v", time.Since(tmNow))
+	log.Infof("[timetest] persist time:%+v", time.Since(tmNow))
 
 	return
 }
 
 func (s *session) persist(seqNum int, msgBytes []byte) error {
 	if !s.DisableMessagePersist {
+		tmNow := time.Now()
 		if err := s.store.SaveMessage(seqNum, msgBytes); err != nil {
 			return err
 		}
+		log.Infof("[timetest] SaveMessage time:%+v", time.Since(tmNow))
 	}
 
-	return s.store.IncrNextSenderMsgSeqNum()
+	tmNow := time.Now()
+	ret := s.store.IncrNextSenderMsgSeqNum()
+	log.Infof("[timetest] IncrNextSenderMsgSeqNum time:%+v", time.Since(tmNow))
+	return ret
 }
 
 func (s *session) sendQueued() {
