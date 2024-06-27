@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"git.5th.im/lb-public/gear/log"
+
 	"github.com/quickfixgo/quickfix/datadictionary"
 	"github.com/quickfixgo/quickfix/internal"
 )
@@ -245,8 +247,10 @@ func (s *session) sendInReplyTo(msg *Message, inReplyTo *Message) error {
 		return err
 	}
 
+	tmNow := time.Now()
 	s.toSend = append(s.toSend, msgBytes)
 	s.sendQueued()
+	log.Infof("[session.prepMessageForSend] sendQueued time:%+v", time.Since(tmNow))
 
 	return nil
 }
@@ -282,7 +286,9 @@ func (s *session) dropAndSendInReplyTo(msg *Message, inReplyTo *Message) error {
 
 func (s *session) prepMessageForSend(msg *Message, inReplyTo *Message) (msgBytes []byte, err error) {
 	s.fillDefaultHeader(msg, inReplyTo)
+	tmNow := time.Now()
 	seqNum := s.store.NextSenderMsgSeqNum()
+	log.Infof("[session.prepMessageForSend] NextSenderMsgSeqNum time:%+v", time.Since(tmNow))
 	msg.Header.SetField(tagMsgSeqNum, FIXInt(seqNum))
 
 	msgType, err := msg.Header.GetBytes(tagMsgType)
@@ -312,13 +318,17 @@ func (s *session) prepMessageForSend(msg *Message, inReplyTo *Message) (msgBytes
 			}
 		}
 	} else {
+		tmNow = time.Now()
 		if err = s.application.ToApp(msg, s.sessionID); err != nil {
 			return
 		}
+		log.Infof("[session.prepMessageForSend] ToApp time:%+v", time.Since(tmNow))
 	}
 
+	tmNow = time.Now()
 	msgBytes = msg.build()
 	err = s.persist(seqNum, msgBytes)
+	log.Infof("[session.prepMessageForSend] ToApp time:%+v", time.Since(tmNow))
 
 	return
 }
