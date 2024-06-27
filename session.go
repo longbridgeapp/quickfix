@@ -222,10 +222,12 @@ func (s *session) queueForSend(msg *Message) error {
 
 	s.toSend = append(s.toSend, msgBytes)
 
+	tmNow := time.Now()
 	select {
 	case s.messageEvent <- true:
 	default:
 	}
+	log.Infof("[timetest] messageEvent time:%+v", time.Since(tmNow))
 
 	return nil
 }
