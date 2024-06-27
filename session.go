@@ -781,7 +781,9 @@ func (s *session) run() {
 			s.onAdmin(msg)
 
 		case <-s.messageEvent:
+			tmNow := time.Now()
 			s.SendAppMessages(s)
+			log.Infof("[timetest] SendAppMessages time:%+v", time.Since(tmNow))
 
 		case fixIn, ok := <-s.messageIn:
 			if !ok {
