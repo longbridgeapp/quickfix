@@ -44,6 +44,18 @@ func closeFile(f *os.File) error {
 	return nil
 }
 
+func syncBeforeCloseFile(f *os.File) error {
+	if f != nil {
+		if err := f.Sync(); err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
+		}
+	}
+
+	return closeFile(f)
+}
+
 // removeFile behaves like os.Remove, except that no error is returned if the file does not exist
 func removeFile(fname string) error {
 	if err := os.Remove(fname); (err != nil) && !os.IsNotExist(err) {

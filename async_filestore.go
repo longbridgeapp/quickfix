@@ -202,9 +202,6 @@ func (store *asyncFileStore) setSession() error {
 	if _, err := store.sessionFile.Write(data); err != nil {
 		return fmt.Errorf("unable to write to file: %s: %s", store.sessionFname, err.Error())
 	}
-	if err := store.sessionFile.Sync(); err != nil {
-		return fmt.Errorf("unable to flush file: %s: %s", store.sessionFname, err.Error())
-	}
 	return nil
 }
 
@@ -214,9 +211,6 @@ func (store *asyncFileStore) setSeqNum(f *os.File, seqNum int) error {
 	}
 	if _, err := fmt.Fprintf(f, "%019d", seqNum); err != nil {
 		return fmt.Errorf("unable to write to file: %s: %s", f.Name(), err.Error())
-	}
-	if err := f.Sync(); err != nil {
-		return fmt.Errorf("unable to flush file: %s: %s", f.Name(), err.Error())
 	}
 	return nil
 }
@@ -285,12 +279,6 @@ func (store *asyncFileStore) SaveMessage(seqNum int, msg []byte) error {
 	if _, err := store.bodyFile.Write(msg); err != nil {
 		return fmt.Errorf("unable to write to file: %s: %s", store.bodyFname, err.Error())
 	}
-	if err := store.bodyFile.Sync(); err != nil {
-		return fmt.Errorf("unable to flush file: %s: %s", store.bodyFname, err.Error())
-	}
-	if err := store.headerFile.Sync(); err != nil {
-		return fmt.Errorf("unable to flush file: %s: %s", store.headerFname, err.Error())
-	}
 	return nil
 }
 
@@ -324,19 +312,19 @@ func (store *asyncFileStore) GetMessages(beginSeqNum, endSeqNum int) ([][]byte, 
 
 // Close closes the store's files
 func (store *asyncFileStore) Close() error {
-	if err := closeFile(store.bodyFile); err != nil {
+	if err := syncBeforeCloseFile(store.bodyFile); err != nil {
 		return err
 	}
-	if err := closeFile(store.headerFile); err != nil {
+	if err := syncBeforeCloseFile(store.headerFile); err != nil {
 		return err
 	}
-	if err := closeFile(store.sessionFile); err != nil {
+	if err := syncBeforeCloseFile(store.sessionFile); err != nil {
 		return err
 	}
-	if err := closeFile(store.senderSeqNumsFile); err != nil {
+	if err := syncBeforeCloseFile(store.senderSeqNumsFile); err != nil {
 		return err
 	}
-	if err := closeFile(store.targetSeqNumsFile); err != nil {
+	if err := syncBeforeCloseFile(store.targetSeqNumsFile); err != nil {
 		return err
 	}
 
