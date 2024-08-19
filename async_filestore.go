@@ -263,11 +263,11 @@ func (store *asyncFileStore) CreationTime() time.Time {
 }
 
 func (store *asyncFileStore) SaveMessage(seqNum int, msg []byte) error {
-	offset, err := store.bodyFile.Seek(0, os.SEEK_END)
+	offset, err := store.bodyFile.Seek(0, io.SeekEnd)
 	if err != nil {
 		return fmt.Errorf("unable to seek to end of file: %s: %s", store.bodyFname, err.Error())
 	}
-	if _, err := store.headerFile.Seek(0, os.SEEK_END); err != nil {
+	if _, err := store.headerFile.Seek(0, io.SeekEnd); err != nil {
 		return fmt.Errorf("unable to seek to end of file: %s: %s", store.headerFname, err.Error())
 	}
 	if _, err := fmt.Fprintf(store.headerFile, "%d,%d,%d\n", seqNum, offset, len(msg)); err != nil {
