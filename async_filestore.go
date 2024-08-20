@@ -47,7 +47,7 @@ func (f asyncFileStoreFactory) Create(sessionID SessionID) (msgStore MessageStor
 	if err != nil {
 		return nil, err
 	}
-	return newFileStore(sessionID, dirname)
+	return newAsyncFileStore(sessionID, dirname)
 }
 
 func newAsyncFileStore(sessionID SessionID, dirname string) (*asyncFileStore, error) {
