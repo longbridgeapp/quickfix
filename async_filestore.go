@@ -312,19 +312,19 @@ func (store *asyncFileStore) GetMessages(beginSeqNum, endSeqNum int) ([][]byte, 
 
 // Close closes the store's files
 func (store *asyncFileStore) Close() error {
-	if err := syncBeforeCloseFile(store.bodyFile); err != nil {
+	if err := syncAndCloseFile(store.bodyFile); err != nil {
 		return err
 	}
-	if err := syncBeforeCloseFile(store.headerFile); err != nil {
+	if err := syncAndCloseFile(store.headerFile); err != nil {
 		return err
 	}
-	if err := syncBeforeCloseFile(store.sessionFile); err != nil {
+	if err := syncAndCloseFile(store.sessionFile); err != nil {
 		return err
 	}
-	if err := syncBeforeCloseFile(store.senderSeqNumsFile); err != nil {
+	if err := syncAndCloseFile(store.senderSeqNumsFile); err != nil {
 		return err
 	}
-	if err := syncBeforeCloseFile(store.targetSeqNumsFile); err != nil {
+	if err := syncAndCloseFile(store.targetSeqNumsFile); err != nil {
 		return err
 	}
 

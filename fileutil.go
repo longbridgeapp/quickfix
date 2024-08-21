@@ -44,7 +44,7 @@ func closeFile(f *os.File) error {
 	return nil
 }
 
-func syncBeforeCloseFile(f *os.File) error {
+func syncAndCloseFile(f *os.File) error {
 	if f != nil {
 		if err := f.Sync(); err != nil {
 			if !os.IsNotExist(err) {
@@ -52,7 +52,6 @@ func syncBeforeCloseFile(f *os.File) error {
 			}
 		}
 	}
-
 	return closeFile(f)
 }
 
