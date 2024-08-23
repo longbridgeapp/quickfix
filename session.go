@@ -341,12 +341,12 @@ func (s *session) persist(seqNum int, msgBytes []byte) error {
 		if err := s.store.SaveMessage(seqNum, msgBytes); err != nil {
 			return err
 		}
-		log.Infof("[timetest] SaveMessage time:%+v", time.Since(tmNow))
+		log.Infof("[timetest] SaveMessage time:%+v, seq:%d", time.Since(tmNow), seqNum)
 	}
 
 	tmNow := time.Now()
 	ret := s.store.IncrNextSenderMsgSeqNum()
-	log.Infof("[timetest] IncrNextSenderMsgSeqNum time:%+v", time.Since(tmNow))
+	log.Infof("[timetest] IncrNextSenderMsgSeqNum time:%+v, seq:%d", time.Since(tmNow), seqNum)
 	return ret
 }
 
