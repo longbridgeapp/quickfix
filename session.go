@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"git.5th.im/lb-public/gear/log"
+
 	"github.com/quickfixgo/quickfix/datadictionary"
 	"github.com/quickfixgo/quickfix/internal"
 )
@@ -220,10 +222,12 @@ func (s *session) queueForSend(msg *Message) error {
 
 	s.toSend = append(s.toSend, msgBytes)
 
+	tmNow := time.Now()
 	select {
 	case s.messageEvent <- true:
 	default:
 	}
+	log.Infof("[timetest] messageEvent time:%+v", time.Since(tmNow))
 
 	return nil
 }
@@ -245,8 +249,10 @@ func (s *session) sendInReplyTo(msg *Message, inReplyTo *Message) error {
 		return err
 	}
 
+	tmNow := time.Now()
 	s.toSend = append(s.toSend, msgBytes)
 	s.sendQueued()
+	log.Infof("[timetest] sendQueued time:%+v", time.Since(tmNow))
 
 	return nil
 }
@@ -282,7 +288,9 @@ func (s *session) dropAndSendInReplyTo(msg *Message, inReplyTo *Message) error {
 
 func (s *session) prepMessageForSend(msg *Message, inReplyTo *Message) (msgBytes []byte, err error) {
 	s.fillDefaultHeader(msg, inReplyTo)
+	tmNow := time.Now()
 	seqNum := s.store.NextSenderMsgSeqNum()
+	log.Infof("[timetest] NextSenderMsgSeqNum time:%+v", time.Since(tmNow))
 	msg.Header.SetField(tagMsgSeqNum, FIXInt(seqNum))
 
 	msgType, err := msg.Header.GetBytes(tagMsgType)
@@ -312,25 +320,34 @@ func (s *session) prepMessageForSend(msg *Message, inReplyTo *Message) (msgBytes
 			}
 		}
 	} else {
+		tmNow = time.Now()
 		if err = s.application.ToApp(msg, s.sessionID); err != nil {
 			return
 		}
+		log.Infof("[timetest] ToApp time:%+v", time.Since(tmNow))
 	}
 
+	tmNow = time.Now()
 	msgBytes = msg.build()
 	err = s.persist(seqNum, msgBytes)
+	log.Infof("[timetest] persist time:%+v", time.Since(tmNow))
 
 	return
 }
 
 func (s *session) persist(seqNum int, msgBytes []byte) error {
 	if !s.DisableMessagePersist {
+		tmNow := time.Now()
 		if err := s.store.SaveMessage(seqNum, msgBytes); err != nil {
 			return err
 		}
+		log.Infof("[timetest] SaveMessage time:%+v, seq:%d", time.Since(tmNow), seqNum)
 	}
 
-	return s.store.IncrNextSenderMsgSeqNum()
+	tmNow := time.Now()
+	ret := s.store.IncrNextSenderMsgSeqNum()
+	log.Infof("[timetest] IncrNextSenderMsgSeqNum time:%+v, seq:%d", time.Since(tmNow), seqNum)
+	return ret
 }
 
 func (s *session) sendQueued() {
@@ -766,7 +783,9 @@ func (s *session) run() {
 			s.onAdmin(msg)
 
 		case <-s.messageEvent:
+			tmNow := time.Now()
 			s.SendAppMessages(s)
+			log.Infof("[timetest] SendAppMessages time:%+v", time.Since(tmNow))
 
 		case fixIn, ok := <-s.messageIn:
 			if !ok {

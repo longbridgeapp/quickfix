@@ -3,6 +3,9 @@ package quickfix
 import (
 	"io"
 	"log"
+	"time"
+
+	glog "git.5th.im/lb-public/gear/log"
 )
 
 func writeLoop(connection io.Writer, messageOut chan []byte, log Log) {
@@ -11,10 +14,11 @@ func writeLoop(connection io.Writer, messageOut chan []byte, log Log) {
 		if !ok {
 			return
 		}
-
+		tmNow := time.Now()
 		if _, err := connection.Write(msg); err != nil {
 			log.OnEvent(err.Error())
 		}
+		glog.Infof("[timetest] writeLoop time:%+v", time.Since(tmNow))
 	}
 }
 
