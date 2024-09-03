@@ -14,7 +14,7 @@ import (
 
 type fileStoreOption func(*fileStoreFactory)
 
-func WithBackupStore(backup MessageStore) fileStoreOption {
+func WithBackupStore(backup MessageStoreFactory) fileStoreOption {
 	return func(fsf *fileStoreFactory) {
 		fsf.backup = backup
 	}
@@ -27,7 +27,7 @@ type msgDef struct {
 
 type fileStoreFactory struct {
 	settings *Settings
-	backup   MessageStore
+	backup   MessageStoreFactory
 }
 
 type fileStore struct {
@@ -80,10 +80,16 @@ func (f fileStoreFactory) Create(sessionID SessionID) (msgStore MessageStore, er
 	} else {
 		fsync = true //existing behavior is to fsync writes
 	}
-	return newFileStore(sessionID, dirname, fsync, f.backup)
+
+	backupStore, err := f.backup.Create(sessionID)
+	if err != nil {
+		// log
+	}
+
+	return newFileStore(sessionID, dirname, fsync, backupStore)
 }
 
-func newFileStore(sessionID SessionID, dirname string, fileSync bool, backup MessageStore) (*fileStore, error) {
+func newFileStore(sessionID SessionID, dirname string, fileSync bool, backupStore MessageStore) (*fileStore, error) {
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
 	}
@@ -100,7 +106,7 @@ func newFileStore(sessionID SessionID, dirname string, fileSync bool, backup Mes
 		senderSeqNumsFname: path.Join(dirname, fmt.Sprintf("%s.%s", sessionPrefix, "senderseqnums")),
 		targetSeqNumsFname: path.Join(dirname, fmt.Sprintf("%s.%s", sessionPrefix, "targetseqnums")),
 		fileSync:           fileSync,
-		backup:             newStoreBackup(backup),
+		backup:             newStoreBackup(backupStore),
 	}
 
 	store.backup.start()
