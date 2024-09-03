@@ -3,7 +3,6 @@ package quickfix
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
@@ -13,6 +12,14 @@ import (
 	"github.com/quickfixgo/quickfix/config"
 )
 
+type fileStoreOption func(*fileStoreFactory)
+
+func WithBackupStore(backup MessageStore) fileStoreOption {
+	return func(fsf *fileStoreFactory) {
+		fsf.backup = backup
+	}
+}
+
 type msgDef struct {
 	offset int64
 	size   int
@@ -20,6 +27,7 @@ type msgDef struct {
 
 type fileStoreFactory struct {
 	settings *Settings
+	backup   MessageStore
 }
 
 type fileStore struct {
@@ -37,11 +45,20 @@ type fileStore struct {
 	senderSeqNumsFile  *os.File
 	targetSeqNumsFile  *os.File
 	fileSync           bool
+	backup             *storeBackup
 }
 
 // NewFileStoreFactory returns a file-based implementation of MessageStoreFactory
-func NewFileStoreFactory(settings *Settings) MessageStoreFactory {
-	return fileStoreFactory{settings: settings}
+func NewFileStoreFactory(settings *Settings, opt ...fileStoreOption) MessageStoreFactory {
+	sfs := &fileStoreFactory{
+		settings: settings,
+	}
+
+	for _, f := range opt {
+		f(sfs)
+	}
+
+	return sfs
 }
 
 // Create creates a new FileStore implementation of the MessageStore interface
@@ -63,10 +80,10 @@ func (f fileStoreFactory) Create(sessionID SessionID) (msgStore MessageStore, er
 	} else {
 		fsync = true //existing behavior is to fsync writes
 	}
-	return newFileStore(sessionID, dirname, fsync)
+	return newFileStore(sessionID, dirname, fsync, f.backup)
 }
 
-func newFileStore(sessionID SessionID, dirname string, fileSync bool) (*fileStore, error) {
+func newFileStore(sessionID SessionID, dirname string, fileSync bool, backup MessageStore) (*fileStore, error) {
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
 	}
@@ -83,7 +100,10 @@ func newFileStore(sessionID SessionID, dirname string, fileSync bool) (*fileStor
 		senderSeqNumsFname: path.Join(dirname, fmt.Sprintf("%s.%s", sessionPrefix, "senderseqnums")),
 		targetSeqNumsFname: path.Join(dirname, fmt.Sprintf("%s.%s", sessionPrefix, "targetseqnums")),
 		fileSync:           fileSync,
+		backup:             newStoreBackup(backup),
 	}
+
+	store.backup.start()
 
 	if err := store.Refresh(); err != nil {
 		return nil, err
@@ -116,7 +136,14 @@ func (store *fileStore) Reset() error {
 	if err := removeFile(store.targetSeqNumsFname); err != nil {
 		return err
 	}
-	return store.Refresh()
+	if store.backup != nil {
+		store.backup.Reset()
+	}
+	if err := store.Refresh(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Refresh closes the store files and then reloads from them
@@ -164,6 +191,11 @@ func (store *fileStore) Refresh() (err error) {
 	if err := store.SetNextTargetMsgSeqNum(store.NextTargetMsgSeqNum()); err != nil {
 		return errors.Wrap(err, "set next target")
 	}
+
+	if store.backup != nil {
+		store.backup.Refresh()
+	}
+
 	return nil
 }
 
@@ -180,7 +212,7 @@ func (store *fileStore) populateCache() (creationTimePopulated bool, err error) 
 		}
 	}
 
-	if timeBytes, err := ioutil.ReadFile(store.sessionFname); err == nil {
+	if timeBytes, err := os.ReadFile(store.sessionFname); err == nil {
 		var ctime time.Time
 		if err := ctime.UnmarshalText(timeBytes); err == nil {
 			store.cache.creationTime = ctime
@@ -188,7 +220,7 @@ func (store *fileStore) populateCache() (creationTimePopulated bool, err error) 
 		}
 	}
 
-	if senderSeqNumBytes, err := ioutil.ReadFile(store.senderSeqNumsFname); err == nil {
+	if senderSeqNumBytes, err := os.ReadFile(store.senderSeqNumsFname); err == nil {
 		if senderSeqNum, err := strconv.Atoi(string(senderSeqNumBytes)); err == nil {
 			if err = store.cache.SetNextSenderMsgSeqNum(senderSeqNum); err != nil {
 				return creationTimePopulated, errors.Wrap(err, "cache set next sender")
@@ -196,7 +228,7 @@ func (store *fileStore) populateCache() (creationTimePopulated bool, err error) 
 		}
 	}
 
-	if targetSeqNumBytes, err := ioutil.ReadFile(store.targetSeqNumsFname); err == nil {
+	if targetSeqNumBytes, err := os.ReadFile(store.targetSeqNumsFname); err == nil {
 		if targetSeqNum, err := strconv.Atoi(string(targetSeqNumBytes)); err == nil {
 			if err = store.cache.SetNextTargetMsgSeqNum(targetSeqNum); err != nil {
 				return creationTimePopulated, errors.Wrap(err, "cache set next target")
@@ -257,7 +289,15 @@ func (store *fileStore) SetNextSenderMsgSeqNum(next int) error {
 	if err := store.cache.SetNextSenderMsgSeqNum(next); err != nil {
 		return errors.Wrap(err, "cache")
 	}
-	return store.setSeqNum(store.senderSeqNumsFile, next)
+	if err := store.setSeqNum(store.senderSeqNumsFile, next); err != nil {
+		return err
+	}
+
+	if store.backup != nil {
+		store.backup.SetNextSenderMsgSeqNum(next)
+	}
+
+	return nil
 }
 
 // SetNextTargetMsgSeqNum sets the next MsgSeqNum that should be received
@@ -265,7 +305,15 @@ func (store *fileStore) SetNextTargetMsgSeqNum(next int) error {
 	if err := store.cache.SetNextTargetMsgSeqNum(next); err != nil {
 		return errors.Wrap(err, "cache")
 	}
-	return store.setSeqNum(store.targetSeqNumsFile, next)
+	if err := store.setSeqNum(store.targetSeqNumsFile, next); err != nil {
+		return err
+	}
+
+	if store.backup != nil {
+		store.backup.SetNextTargetMsgSeqNum(next)
+	}
+
+	return nil
 }
 
 // IncrNextSenderMsgSeqNum increments the next MsgSeqNum that will be sent
@@ -273,7 +321,17 @@ func (store *fileStore) IncrNextSenderMsgSeqNum() error {
 	if err := store.cache.IncrNextSenderMsgSeqNum(); err != nil {
 		return errors.Wrap(err, "cache")
 	}
-	return store.setSeqNum(store.senderSeqNumsFile, store.cache.NextSenderMsgSeqNum())
+
+	seqNum := store.cache.NextSenderMsgSeqNum()
+	if err := store.setSeqNum(store.senderSeqNumsFile, seqNum); err != nil {
+		return err
+	}
+
+	if store.backup != nil {
+		store.backup.SetNextSenderMsgSeqNum(seqNum)
+	}
+
+	return nil
 }
 
 // IncrNextTargetMsgSeqNum increments the next MsgSeqNum that should be received
@@ -281,7 +339,17 @@ func (store *fileStore) IncrNextTargetMsgSeqNum() error {
 	if err := store.cache.IncrNextTargetMsgSeqNum(); err != nil {
 		return errors.Wrap(err, "cache")
 	}
-	return store.setSeqNum(store.targetSeqNumsFile, store.cache.NextTargetMsgSeqNum())
+
+	seqNum := store.cache.NextTargetMsgSeqNum()
+	if err := store.setSeqNum(store.targetSeqNumsFile, seqNum); err != nil {
+		return err
+	}
+
+	if store.backup != nil {
+		store.backup.SetNextTargetMsgSeqNum(seqNum)
+	}
+
+	return nil
 }
 
 // CreationTime returns the creation time of the store
@@ -290,11 +358,11 @@ func (store *fileStore) CreationTime() time.Time {
 }
 
 func (store *fileStore) SaveMessage(seqNum int, msg []byte) error {
-	offset, err := store.bodyFile.Seek(0, os.SEEK_END)
+	offset, err := store.bodyFile.Seek(0, io.SeekEnd)
 	if err != nil {
 		return fmt.Errorf("unable to seek to end of file: %s: %s", store.bodyFname, err.Error())
 	}
-	if _, err := store.headerFile.Seek(0, os.SEEK_END); err != nil {
+	if _, err := store.headerFile.Seek(0, io.SeekEnd); err != nil {
 		return fmt.Errorf("unable to seek to end of file: %s: %s", store.headerFname, err.Error())
 	}
 	if _, err := fmt.Fprintf(store.headerFile, "%d,%d,%d\n", seqNum, offset, len(msg)); err != nil {
@@ -314,6 +382,11 @@ func (store *fileStore) SaveMessage(seqNum int, msg []byte) error {
 			return fmt.Errorf("unable to flush file: %s: %s", store.headerFname, err.Error())
 		}
 	}
+
+	if store.backup != nil {
+		store.backup.SaveMessage(seqNum, msg)
+	}
+
 	return nil
 }
 
@@ -368,6 +441,10 @@ func (store *fileStore) Close() error {
 	store.sessionFile = nil
 	store.senderSeqNumsFile = nil
 	store.targetSeqNumsFile = nil
+
+	if store.backup != nil {
+		store.backup.Close()
+	}
 
 	return nil
 }
