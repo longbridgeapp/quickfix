@@ -13,22 +13,14 @@ import (
 	"github.com/quickfixgo/quickfix/config"
 )
 
-type fileStoreOption func(*fileStoreFactory)
-
-func WithBackupStore(backup MessageStoreFactory) fileStoreOption {
-	return func(fsf *fileStoreFactory) {
-		fsf.backup = backup
-	}
-}
-
 type msgDef struct {
 	offset int64
 	size   int
 }
 
 type fileStoreFactory struct {
-	settings *Settings
-	backup   MessageStoreFactory
+	settings      *Settings
+	backupFactory *backupStoreFactory
 }
 
 type fileStore struct {
@@ -46,17 +38,14 @@ type fileStore struct {
 	senderSeqNumsFile  *os.File
 	targetSeqNumsFile  *os.File
 	fileSync           bool
-	backup             *backupStore
+	backupStore        *backupStore
 }
 
 // NewFileStoreFactory returns a file-based implementation of MessageStoreFactory
-func NewFileStoreFactory(settings *Settings, opt ...fileStoreOption) MessageStoreFactory {
+func NewFileStoreFactory(settings *Settings, backupFactory *backupStoreFactory) MessageStoreFactory {
 	sfs := &fileStoreFactory{
-		settings: settings,
-	}
-
-	for _, f := range opt {
-		f(sfs)
+		settings:      settings,
+		backupFactory: backupFactory,
 	}
 
 	return sfs
@@ -82,7 +71,7 @@ func (f fileStoreFactory) Create(sessionID SessionID) (msgStore MessageStore, er
 		fsync = true //existing behavior is to fsync writes
 	}
 
-	backupStore, err := f.backup.Create(sessionID)
+	backupStore, err := f.backupFactory.Create(sessionID)
 	if err != nil {
 		log.Errorf("file store: failed to init backup store, err: %v", err)
 	}
@@ -90,7 +79,7 @@ func (f fileStoreFactory) Create(sessionID SessionID) (msgStore MessageStore, er
 	return newFileStore(sessionID, dirname, fsync, backupStore)
 }
 
-func newFileStore(sessionID SessionID, dirname string, fileSync bool, backupStore MessageStore) (*fileStore, error) {
+func newFileStore(sessionID SessionID, dirname string, fileSync bool, backupStore *backupStore) (*fileStore, error) {
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
 	}
@@ -107,7 +96,7 @@ func newFileStore(sessionID SessionID, dirname string, fileSync bool, backupStor
 		senderSeqNumsFname: path.Join(dirname, fmt.Sprintf("%s.%s", sessionPrefix, "senderseqnums")),
 		targetSeqNumsFname: path.Join(dirname, fmt.Sprintf("%s.%s", sessionPrefix, "targetseqnums")),
 		fileSync:           fileSync,
-		backup:             newBackupStore(backupStore),
+		backupStore:        backupStore,
 	}
 
 	if err := store.Refresh(); err != nil {
@@ -142,7 +131,7 @@ func (store *fileStore) Reset() error {
 		return err
 	}
 
-	store.backup.Reset()
+	store.backupStore.Reset()
 
 	if err := store.Refresh(); err != nil {
 		return err
@@ -294,7 +283,7 @@ func (store *fileStore) SetNextSenderMsgSeqNum(next int) error {
 		return err
 	}
 
-	store.backup.SetNextSenderMsgSeqNum(next)
+	store.backupStore.SetNextSenderMsgSeqNum(next)
 
 	return nil
 }
@@ -308,7 +297,7 @@ func (store *fileStore) SetNextTargetMsgSeqNum(next int) error {
 		return err
 	}
 
-	store.backup.SetNextTargetMsgSeqNum(next)
+	store.backupStore.SetNextTargetMsgSeqNum(next)
 
 	return nil
 }
@@ -324,7 +313,7 @@ func (store *fileStore) IncrNextSenderMsgSeqNum() error {
 		return err
 	}
 
-	store.backup.SetNextSenderMsgSeqNum(seqNum)
+	store.backupStore.SetNextSenderMsgSeqNum(seqNum)
 
 	return nil
 }
@@ -340,7 +329,7 @@ func (store *fileStore) IncrNextTargetMsgSeqNum() error {
 		return err
 	}
 
-	store.backup.SetNextTargetMsgSeqNum(seqNum)
+	store.backupStore.SetNextTargetMsgSeqNum(seqNum)
 
 	return nil
 }
@@ -376,7 +365,7 @@ func (store *fileStore) SaveMessage(seqNum int, msg []byte) error {
 		}
 	}
 
-	store.backup.SaveMessage(seqNum, msg)
+	store.backupStore.SaveMessage(seqNum, msg)
 
 	return nil
 }
