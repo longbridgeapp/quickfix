@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"git.5th.im/lb-public/gear/log"
 	"github.com/pkg/errors"
 	"github.com/quickfixgo/quickfix/config"
 )
@@ -45,7 +46,7 @@ type fileStore struct {
 	senderSeqNumsFile  *os.File
 	targetSeqNumsFile  *os.File
 	fileSync           bool
-	backup             *storeBackup
+	backup             *backupStore
 }
 
 // NewFileStoreFactory returns a file-based implementation of MessageStoreFactory
@@ -83,7 +84,7 @@ func (f fileStoreFactory) Create(sessionID SessionID) (msgStore MessageStore, er
 
 	backupStore, err := f.backup.Create(sessionID)
 	if err != nil {
-		// log
+		log.Errorf("file store: failed to init backup store, err: %v", err)
 	}
 
 	return newFileStore(sessionID, dirname, fsync, backupStore)
@@ -106,10 +107,8 @@ func newFileStore(sessionID SessionID, dirname string, fileSync bool, backupStor
 		senderSeqNumsFname: path.Join(dirname, fmt.Sprintf("%s.%s", sessionPrefix, "senderseqnums")),
 		targetSeqNumsFname: path.Join(dirname, fmt.Sprintf("%s.%s", sessionPrefix, "targetseqnums")),
 		fileSync:           fileSync,
-		backup:             newStoreBackup(backupStore),
+		backup:             newBackupStore(backupStore),
 	}
-
-	store.backup.start()
 
 	if err := store.Refresh(); err != nil {
 		return nil, err
@@ -142,9 +141,9 @@ func (store *fileStore) Reset() error {
 	if err := removeFile(store.targetSeqNumsFname); err != nil {
 		return err
 	}
-	if store.backup != nil {
-		store.backup.Reset()
-	}
+
+	store.backup.Reset()
+
 	if err := store.Refresh(); err != nil {
 		return err
 	}
@@ -196,10 +195,6 @@ func (store *fileStore) Refresh() (err error) {
 
 	if err := store.SetNextTargetMsgSeqNum(store.NextTargetMsgSeqNum()); err != nil {
 		return errors.Wrap(err, "set next target")
-	}
-
-	if store.backup != nil {
-		store.backup.Refresh()
 	}
 
 	return nil
@@ -299,9 +294,7 @@ func (store *fileStore) SetNextSenderMsgSeqNum(next int) error {
 		return err
 	}
 
-	if store.backup != nil {
-		store.backup.SetNextSenderMsgSeqNum(next)
-	}
+	store.backup.SetNextSenderMsgSeqNum(next)
 
 	return nil
 }
@@ -315,9 +308,7 @@ func (store *fileStore) SetNextTargetMsgSeqNum(next int) error {
 		return err
 	}
 
-	if store.backup != nil {
-		store.backup.SetNextTargetMsgSeqNum(next)
-	}
+	store.backup.SetNextTargetMsgSeqNum(next)
 
 	return nil
 }
@@ -333,9 +324,7 @@ func (store *fileStore) IncrNextSenderMsgSeqNum() error {
 		return err
 	}
 
-	if store.backup != nil {
-		store.backup.SetNextSenderMsgSeqNum(seqNum)
-	}
+	store.backup.SetNextSenderMsgSeqNum(seqNum)
 
 	return nil
 }
@@ -351,9 +340,7 @@ func (store *fileStore) IncrNextTargetMsgSeqNum() error {
 		return err
 	}
 
-	if store.backup != nil {
-		store.backup.SetNextTargetMsgSeqNum(seqNum)
-	}
+	store.backup.SetNextTargetMsgSeqNum(seqNum)
 
 	return nil
 }
@@ -389,9 +376,7 @@ func (store *fileStore) SaveMessage(seqNum int, msg []byte) error {
 		}
 	}
 
-	if store.backup != nil {
-		store.backup.SaveMessage(seqNum, msg)
-	}
+	store.backup.SaveMessage(seqNum, msg)
 
 	return nil
 }
@@ -447,10 +432,6 @@ func (store *fileStore) Close() error {
 	store.sessionFile = nil
 	store.senderSeqNumsFile = nil
 	store.targetSeqNumsFile = nil
-
-	if store.backup != nil {
-		store.backup.Close()
-	}
 
 	return nil
 }
