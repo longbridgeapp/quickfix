@@ -60,7 +60,7 @@ func SendToTarget(m Messagable, sessionID SessionID) error {
 	}
 	tmNow := time.Now()
 	err := session.queueForSend(msg)
-	log.Infof("[timetest] queueForSend time:%+v", time.Since(tmNow))
+	log.Infof("[timetest-out] queueForSend time:%+v", time.Since(tmNow))
 	return err
 }
 
