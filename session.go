@@ -227,7 +227,7 @@ func (s *session) queueForSend(msg *Message) error {
 	case s.messageEvent <- true:
 	default:
 	}
-	log.Infof("[timetest] messageEvent time:%+v", time.Since(tmNow))
+	log.Infof("[timetest-out] messageEvent time:%+v", time.Since(tmNow))
 
 	return nil
 }
@@ -252,7 +252,7 @@ func (s *session) sendInReplyTo(msg *Message, inReplyTo *Message) error {
 	tmNow := time.Now()
 	s.toSend = append(s.toSend, msgBytes)
 	s.sendQueued()
-	log.Infof("[timetest] sendQueued time:%+v", time.Since(tmNow))
+	log.Infof("[timetest-out] sendQueued time:%+v", time.Since(tmNow))
 
 	return nil
 }
@@ -290,7 +290,7 @@ func (s *session) prepMessageForSend(msg *Message, inReplyTo *Message) (msgBytes
 	s.fillDefaultHeader(msg, inReplyTo)
 	tmNow := time.Now()
 	seqNum := s.store.NextSenderMsgSeqNum()
-	log.Infof("[timetest] NextSenderMsgSeqNum time:%+v", time.Since(tmNow))
+	log.Infof("[timetest-out] NextSenderMsgSeqNum time:%+v", time.Since(tmNow))
 	msg.Header.SetField(tagMsgSeqNum, FIXInt(seqNum))
 
 	msgType, err := msg.Header.GetBytes(tagMsgType)
@@ -324,13 +324,13 @@ func (s *session) prepMessageForSend(msg *Message, inReplyTo *Message) (msgBytes
 		if err = s.application.ToApp(msg, s.sessionID); err != nil {
 			return
 		}
-		log.Infof("[timetest] ToApp time:%+v", time.Since(tmNow))
+		log.Infof("[timetest-out] ToApp time:%+v", time.Since(tmNow))
 	}
 
 	tmNow = time.Now()
 	msgBytes = msg.build()
 	err = s.persist(seqNum, msgBytes)
-	log.Infof("[timetest] persist time:%+v", time.Since(tmNow))
+	log.Infof("[timetest-out] persist time:%+v", time.Since(tmNow))
 
 	return
 }
@@ -341,12 +341,12 @@ func (s *session) persist(seqNum int, msgBytes []byte) error {
 		if err := s.store.SaveMessage(seqNum, msgBytes); err != nil {
 			return err
 		}
-		log.Infof("[timetest] SaveMessage time:%+v, seq:%d", time.Since(tmNow), seqNum)
+		log.Infof("[timetest-out] SaveMessage time:%+v, seq:%d", time.Since(tmNow), seqNum)
 	}
 
 	tmNow := time.Now()
 	ret := s.store.IncrNextSenderMsgSeqNum()
-	log.Infof("[timetest] IncrNextSenderMsgSeqNum time:%+v, seq:%d", time.Since(tmNow), seqNum)
+	log.Infof("[timetest-out] IncrNextSenderMsgSeqNum time:%+v, seq:%d", time.Since(tmNow), seqNum)
 	return ret
 }
 
@@ -785,7 +785,7 @@ func (s *session) run() {
 		case <-s.messageEvent:
 			tmNow := time.Now()
 			s.SendAppMessages(s)
-			log.Infof("[timetest] SendAppMessages time:%+v", time.Since(tmNow))
+			log.Infof("[timetest-out] SendAppMessages time:%+v", time.Since(tmNow))
 
 		case fixIn, ok := <-s.messageIn:
 			if !ok {
