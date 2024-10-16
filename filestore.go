@@ -69,7 +69,6 @@ func (f fileStoreFactory) Create(sessionID SessionID) (msgStore MessageStore, er
 	} else {
 		fsync = true //existing behavior is to fsync writes
 	}
-
 	backupStore, err := f.backupFactory.Create(sessionID)
 	if err != nil {
 		fmt.Printf("file store: failed to init backup store, err: %v\n", err)
